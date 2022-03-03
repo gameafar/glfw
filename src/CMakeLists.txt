@@ -1,4 +1,18 @@
 
+if(gaen_MINEXT)
+  # We put mappings.h in binary dir so as not to create local changes during a build
+  set(common_HEADERS internal.h ${CMAKE_CURRENT_BINARY_DIR}/mappings.h
+                     "${GLFW_BINARY_DIR}/src/glfw_config.h"
+                     "${GLFW_SOURCE_DIR}/include/GLFW/glfw3.h"
+                     "${GLFW_SOURCE_DIR}/include/GLFW/glfw3native.h")
+  set(common_SOURCES context.c init.c input.c monitor.c vulkan.c window.c)
+
+  # Only run the mappings script at cmake time, no need for a target in our case
+  execute_process(
+    COMMAND "${CMAKE_COMMAND}" -P "${GLFW_SOURCE_DIR}/CMake/GenerateMappings.cmake" mappings.h.in ${CMAKE_CURRENT_BINARY_DIR}/mappings.h
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+else() # gaen_MINEXT
 set(common_HEADERS internal.h mappings.h
                    "${GLFW_BINARY_DIR}/src/glfw_config.h"
                    "${GLFW_SOURCE_DIR}/include/GLFW/glfw3.h"
@@ -13,6 +27,7 @@ add_custom_target(update_mappings
     VERBATIM)
 
 set_target_properties(update_mappings PROPERTIES FOLDER "GLFW3")
+endif() # gaen_MINEXT
 
 if (_GLFW_COCOA)
     set(glfw_HEADERS ${common_HEADERS} cocoa_platform.h cocoa_joystick.h
@@ -112,10 +127,18 @@ target_compile_definitions(glfw PRIVATE _GLFW_USE_CONFIG_H)
 target_include_directories(glfw PUBLIC
                            "$<BUILD_INTERFACE:${GLFW_SOURCE_DIR}/include>"
                            "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
+if(gaen_MINEXT)
+  # put binary dir first so we make sure to include generated mappings.h
+  target_include_directories(glfw PRIVATE
+                             "${GLFW_BINARY_DIR}/src"
+                             "${GLFW_SOURCE_DIR}/src"
+                             ${glfw_INCLUDE_DIRS})
+else() # gean_MINEXT
 target_include_directories(glfw PRIVATE
                            "${GLFW_SOURCE_DIR}/src"
                            "${GLFW_BINARY_DIR}/src"
                            ${glfw_INCLUDE_DIRS})
+endif() # gaen_MINEXT
 target_link_libraries(glfw PRIVATE ${glfw_LIBRARIES})
 
 # Make GCC warn about declarations that VS 2010 and 2012 won't accept for all
